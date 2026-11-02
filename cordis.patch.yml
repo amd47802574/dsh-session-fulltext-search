@@ -1,16 +1,25 @@
 # dsh-session-fulltext-search — enable full-text search over session history.
 # 让 DSH 侧边栏放大镜搜索会话正文，而不只是标题。
 #
-# The dsh-base and dsh-web-app bundles ship the SQLite FTS5 search backend
-# (session-query-sqlite) with `openAt: never`: the sidebar search box then
-# matches session titles and workspace names only. This bundle layer overrides
-# that row by id and turns content search on:
+# Layer 1: the deployment switch. The dsh-base and dsh-web-app bundles ship
+# the SQLite FTS5 search backend (session-query-sqlite) with `openAt: never`:
+# the sidebar search box then matches session titles and workspace names only.
+# This override row turns content search on:
 #
 #   - openAt: first-search — node:sqlite is imported and the index opened at
 #     the first search, keeping startup output clean.
 #   - path — a persistent derived index under $DSH_HOME. Rebuilt automatically
 #     when missing; safe to delete at any time. Never point it at the session
 #     persistence database.
+#
+# Layer 2: the CJK fallback node half. FTS5's unicode61 tokenizer treats a
+# run of continuous CJK text as one token, so a Chinese query that does not
+# align with token boundaries never matches (searching 福州大学 does not hit
+# 已保研至福州大学). The row below mounts this package's node half after the
+# engine; it wraps ctx.sessionQuery and answers CJK queries with a literal
+# substring scan over the same derived index. inject waits for the engine
+# service; the api-proxy resolves the service per request, so the wrapper —
+# mounted last — is what the sidebar RPC sees.
 #
 # Mounted as a bundle layer (dsh.profile.bundles), applied after dsh-base and
 # dsh-web-app but before the profile's own cordis.patch.yml — a manual override
@@ -19,3 +28,10 @@
   config:
     path: !!js dshHomePath('session-query-index.sqlite3')
     openAt: first-search
+
+- insert:
+    - id: session-fulltext-search-cjk
+      name: dsh-session-fulltext-search
+      inject: [ sessionQuery ]
+      config:
+        index: !!js dshHomePath('session-query-index.sqlite3')

@@ -1,6 +1,6 @@
 # dsh-session-fulltext-search
 
-让 DSH 网页侧边栏的放大镜支持**会话历史全文搜索**。[English](README.md)
+让 DSH 网页侧边栏的放大镜支持**会话历史全文搜索**——并且真正搜得到中文。[English](README.md)
 
 DeepSeek Harness 自带 SQLite FTS5 内容搜索后端
 （`@deepseek-ai/dsh-session-query-sqlite`），但默认部署把它配置为
@@ -8,12 +8,18 @@ DeepSeek Harness 自带 SQLite FTS5 内容搜索后端
 文档规定的部署级开关——把该行覆盖为 `openAt: first-search`，并在
 `$DSH_HOME` 下使用持久化派生索引。
 
+但对中文用户这只解决了第一层：FTS5 的 `unicode61` 分词器把**连续中文
+文本整体当作一个 token**，查询词只有恰好在 token 边界对齐时才能命中——
+搜 `福州大学` 搜不到 `已保研至福州大学`。因此本插件同时挂载一个
+**子串回退层**：包含 CJK 字符的查询改用字面子串扫描同一个派生索引，
+消息正文里的任何中文片段都能按原文找到；非 CJK 查询仍走分词索引。
+
 ## 效果
 
-- 侧边栏放大镜可搜索**消息正文**（用户消息、助手回复、工具结果），
-  跨全部工作区，命中行附带内容摘要。
+- 侧边栏放大镜可搜索**消息正文**（用户消息、助手回复），跨全部工作区，
+  命中行附带内容摘要。
+- **中文搜索是子串匹配**——不存在整 token 边界问题。
 - 索引随会话增量更新。
-- 安装后首次搜索会全量扫描一遍既有日志（一次性开销），之后查询很快。
 
 ## 安装
 
@@ -47,12 +53,14 @@ dsh plugin --profile desktop remove dsh-session-fulltext-search
 
 ## 注意
 
-- 分词器是 FTS5 `unicode61`：按词/短语匹配，**不是**任意子串匹配
-  （`python` 能命中，`pytho` 不行）。整句精确搜索请加引号（`"两个 词"`）；
-  FTS5 操作符（`OR`、`*`）会被当作普通文本处理。
-- 插件只覆盖 `session-query-sqlite` 一行的 `config`（`path`、`openAt`）。
-  你自己 profile 的 `cordis.patch.yml` 在层栈中更靠后，若你再覆盖该行，
-  仍以你的配置为准。
+- 含 CJK 字符的查询走子串扫描；其他查询保持分词器的词/短语匹配
+  （`pytho` 依然搜不到 `python`——这是 FTS5 的设计）。整句精确搜索请加
+  引号（`"两个 词"`）；FTS5 操作符（`OR`、`*`）会被当作普通文本处理。
+- 回退层用独立的只读 SQLite 连接读派生索引，引擎继续写入（WAL）。
+  索引缺失或正在重建时，该次查询只是结果少一些，不会报错。
+- 插件只覆盖 `session-query-sqlite` 一行的 `config`（`path`、`openAt`）
+  并新增自己的包装行。你自己 profile 的 `cordis.patch.yml` 在层栈中更靠后，
+  若你再覆盖该行，仍以你的配置为准。
 - 索引是派生数据，删掉文件即触发重建；不要把 `path` 指向会话持久化
   数据库。
 
