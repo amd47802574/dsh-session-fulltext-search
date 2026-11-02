@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-fulltext-search",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DSH plugin: turn on full-text search over session history (session-query-sqlite FTS5) and add a substring fallback so CJK queries match inside continuous Chinese text.",
   "type": "module",
   "main": "lib/index.js",
