@@ -1,0 +1,22 @@
+{
+  "name": "dsh-session-fulltext-search",
+  "version": "0.1.0",
+  "description": "DSH plugin: turn on full-text search over session history (session-query-sqlite FTS5) — the default deployment matches titles only.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amd47802574/dsh-session-fulltext-search.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ]
+}

@@ -1,0 +1,21 @@
+# dsh-session-fulltext-search — enable full-text search over session history.
+# 让 DSH 侧边栏放大镜搜索会话正文，而不只是标题。
+#
+# The dsh-base and dsh-web-app bundles ship the SQLite FTS5 search backend
+# (session-query-sqlite) with `openAt: never`: the sidebar search box then
+# matches session titles and workspace names only. This bundle layer overrides
+# that row by id and turns content search on:
+#
+#   - openAt: first-search — node:sqlite is imported and the index opened at
+#     the first search, keeping startup output clean.
+#   - path — a persistent derived index under $DSH_HOME. Rebuilt automatically
+#     when missing; safe to delete at any time. Never point it at the session
+#     persistence database.
+#
+# Mounted as a bundle layer (dsh.profile.bundles), applied after dsh-base and
+# dsh-web-app but before the profile's own cordis.patch.yml — a manual override
+# there still wins over this plugin.
+- id: session-query-sqlite
+  config:
+    path: !!js dshHomePath('session-query-index.sqlite3')
+    openAt: first-search
